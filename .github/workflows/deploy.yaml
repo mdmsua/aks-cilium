@@ -24,6 +24,8 @@ jobs:
             cli_config_credentials_token: ${{ secrets.TFC_TOKEN }}
         - name: Setup kubelogin
           uses: azure/use-kubelogin@v1
+          with:
+            kubelogin-version: v0.0.34
         - name: Azure login
           uses: azure/login@v1
           with:
