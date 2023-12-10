@@ -167,7 +167,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "main" {
   name                  = each.key
   kubernetes_cluster_id = azurerm_kubernetes_cluster.main.id
   enable_auto_scaling   = true
-  min_count             = 1
+  min_count             = 3
   max_count             = each.value.max_count
   max_pods              = 250
   os_disk_size_gb       = each.value.os_disk_size_gb
