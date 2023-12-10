@@ -6,10 +6,19 @@ permissions:
 
 on:
     workflow_dispatch:
+        inputs:
+          auto-approve:
+            type: boolean
+            default: false
+            description: Skip plan approval
+
+env:
+    TF_INPUT: 0
+    TF_IN_AUTOMATION: 1
 
 jobs:
-    main:
-        name: Main
+    plan:
+        name: Plan
         environment: main
         runs-on: ubuntu-latest
         steps:
@@ -33,11 +42,18 @@ jobs:
             tenant-id: ${{ vars.ARM_TENANT_ID }}
             subscription-id: ${{ vars.ARM_SUBSCRIPTION_ID }}
         - name: Init
-          run: terraform init
+          run: terraform init -no-color
           working-directory: terraform
         - name: Validate
-          run: terraform validate
+          run: terraform validate -no-color
           working-directory: terraform
         - name: Plan
-          run: terraform plan -input=false -no-color
+          id: plan
+          run: |
+            terraform plan -no-color -detailed-exitcode
+            echo "code=$?" >> "$GITHUB_OUTPUT"
+          working-directory: terraform
+        - name: Apply
+          if: steps.plan.outputs.code == 2 && inputs.auto-approve
+          run: terraform apply -no-color -auto-approve
           working-directory: terraform
