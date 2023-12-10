@@ -54,6 +54,6 @@ jobs:
             echo "code=$?" >> "$GITHUB_OUTPUT"
           working-directory: terraform
         - name: Apply
-          if: steps.plan.outputs.code == 2 && inputs.auto-approve
+          if: steps.plan.outputs.code == '2' && inputs.auto-approve
           run: terraform apply -no-color -auto-approve
           working-directory: terraform
