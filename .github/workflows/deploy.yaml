@@ -49,11 +49,9 @@ jobs:
           working-directory: terraform
         - name: Plan
           id: plan
-          run: |
-            terraform plan -no-color -detailed-exitcode
-            echo "code=$?" >> "$GITHUB_OUTPUT"
+          run: terraform plan -no-color
           working-directory: terraform
         - name: Apply
-          if: steps.plan.outputs.code == '2' && inputs.auto-approve
+          if: inputs.auto-approve
           run: terraform apply -no-color -auto-approve
           working-directory: terraform
