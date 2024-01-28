@@ -1,11 +1,11 @@
 module "naming" {
   source  = "Azure/naming/azurerm"
   version = "0.4.0"
-  suffix  = [random_pet.main.id, var.configuration.location]
+  suffix  = [var.configuration.name, "dev", var.configuration.location]
 }
 
 resource "azuread_group" "main" {
-  display_name               = "${random_pet.main.id}-cluster-admins"
+  display_name               = "${var.configuration.name}-cluster-admins"
   assignable_to_role         = false
   auto_subscribe_new_members = false
   external_senders_allowed   = false
@@ -15,8 +15,6 @@ resource "azuread_group" "main" {
   owners                     = [data.azuread_client_config.main.object_id]
   members                    = setunion([data.azuread_client_config.main.object_id], var.configuration.cluster.admins)
 }
-
-resource "random_pet" "main" {}
 
 resource "azurerm_resource_group" "main" {
   name     = module.naming.resource_group.name
@@ -87,10 +85,10 @@ resource "azurerm_kubernetes_cluster" "main" {
   resource_group_name               = azurerm_resource_group.main.name
   location                          = azurerm_resource_group.main.location
   automatic_channel_upgrade         = "patch"
-  dns_prefix                        = random_pet.main.id
+  dns_prefix                        = var.configuration.name
   image_cleaner_enabled             = true
   image_cleaner_interval_hours      = 24
-  kubernetes_version                = data.azurerm_kubernetes_service_versions.main.latest_version
+  kubernetes_version                = var.configuration.cluster.kubernetes_version
   local_account_disabled            = true
   oidc_issuer_enabled               = true
   role_based_access_control_enabled = true

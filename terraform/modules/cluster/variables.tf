@@ -1,12 +1,14 @@
 variable "configuration" {
   type = object({
+    name     = string
     location = string
     virtual_network = object({
       address_space = string
     })
     cluster = object({
-      pod_cidr     = string
-      service_cidr = string
+      pod_cidr           = string
+      service_cidr       = string
+      kubernetes_version = string
       default_node_pool = optional(object({
         vm_size   = optional(string, "Standard_D2pds_v5")
         max_count = optional(number, 50)

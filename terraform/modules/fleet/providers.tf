@@ -1,12 +1,4 @@
 terraform {
-  backend "remote" {
-    organization = "Mangocado"
-
-    workspaces {
-      name = "cilium"
-    }
-  }
-
   required_providers {
     azurerm = {
       source  = "hashicorp/azurerm"
