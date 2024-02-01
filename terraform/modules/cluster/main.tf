@@ -1,11 +1,11 @@
 module "naming" {
   source  = "Azure/naming/azurerm"
   version = "0.4.0"
-  suffix  = [random_pet.main.id, var.configuration.location]
+  suffix  = [local.project, var.configuration.location]
 }
 
 resource "azuread_group" "main" {
-  display_name               = "${random_pet.main.id}-cluster-admins"
+  display_name               = "${local.project}-cluster-admins"
   assignable_to_role         = false
   auto_subscribe_new_members = false
   external_senders_allowed   = false
@@ -16,7 +16,9 @@ resource "azuread_group" "main" {
   members                    = setunion([data.azuread_client_config.main.object_id], var.configuration.cluster.admins)
 }
 
-resource "random_pet" "main" {}
+resource "random_pet" "main" {
+  length = 1
+}
 
 resource "azurerm_resource_group" "main" {
   name     = module.naming.resource_group.name
@@ -30,23 +32,43 @@ resource "azurerm_virtual_network" "main" {
   address_space       = [var.configuration.virtual_network.address_space]
 }
 
-resource "azurerm_subnet" "main" {
+resource "azurerm_subnet" "default" {
   name                 = module.naming.subnet.name
   resource_group_name  = azurerm_resource_group.main.name
   virtual_network_name = azurerm_virtual_network.main.name
-  address_prefixes     = azurerm_virtual_network.main.address_space
+  address_prefixes     = [cidrsubnet(var.configuration.virtual_network.address_space, 2, 0)]
 }
 
-resource "azurerm_public_ip_prefix" "main" {
-  name                = module.naming.public_ip_prefix.name
+resource "azurerm_subnet" "main" {
+  for_each             = local.zones
+  name                 = "${module.naming.subnet.name}-zone-${each.value}"
+  resource_group_name  = azurerm_resource_group.main.name
+  virtual_network_name = azurerm_virtual_network.main.name
+  address_prefixes     = [cidrsubnet(var.configuration.virtual_network.address_space, 2, tonumber(each.value))]
+}
+
+resource "azurerm_public_ip" "default" {
+  name                = module.naming.public_ip.name
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
   ip_version          = "IPv4"
-  prefix_length       = 28
   sku                 = "Standard"
+  allocation_method   = "Static"
+  zones               = local.zones
 }
 
-resource "azurerm_nat_gateway" "main" {
+resource "azurerm_public_ip" "main" {
+  for_each            = local.zones
+  name                = "${module.naming.public_ip.name}-zone-${each.value}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  ip_version          = "IPv4"
+  sku                 = "Standard"
+  allocation_method   = "Static"
+  zones               = [each.value]
+}
+
+resource "azurerm_nat_gateway" "default" {
   name                    = module.naming.nat_gateway.name
   resource_group_name     = azurerm_resource_group.main.name
   location                = azurerm_resource_group.main.location
@@ -54,14 +76,36 @@ resource "azurerm_nat_gateway" "main" {
   sku_name                = "Standard"
 }
 
-resource "azurerm_nat_gateway_public_ip_prefix_association" "main" {
-  nat_gateway_id      = azurerm_nat_gateway.main.id
-  public_ip_prefix_id = azurerm_public_ip_prefix.main.id
+resource "azurerm_nat_gateway" "main" {
+  for_each                = local.zones
+  name                    = "${module.naming.nat_gateway.name}-zone-${each.value}"
+  resource_group_name     = azurerm_resource_group.main.name
+  location                = azurerm_resource_group.main.location
+  idle_timeout_in_minutes = 4
+  sku_name                = "Standard"
+  zones                   = [each.value]
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "default" {
+  nat_gateway_id       = azurerm_nat_gateway.default.id
+  public_ip_address_id = azurerm_public_ip.default.id
+}
+
+resource "azurerm_subnet_nat_gateway_association" "default" {
+  nat_gateway_id = azurerm_nat_gateway.default.id
+  subnet_id      = azurerm_subnet.default.id
+}
+
+resource "azurerm_nat_gateway_public_ip_association" "main" {
+  for_each             = local.zones
+  nat_gateway_id       = azurerm_nat_gateway.main[each.value].id
+  public_ip_address_id = azurerm_public_ip.main[each.value].id
 }
 
 resource "azurerm_subnet_nat_gateway_association" "main" {
-  nat_gateway_id = azurerm_nat_gateway.main.id
-  subnet_id      = azurerm_subnet.main.id
+  for_each       = local.zones
+  nat_gateway_id = azurerm_nat_gateway.main[each.value].id
+  subnet_id      = azurerm_subnet.main[each.value].id
 }
 
 resource "azurerm_user_assigned_identity" "cluster" {
@@ -82,15 +126,31 @@ resource "azurerm_role_assignment" "cluster_managed_identity_operator_kubelet" {
   scope                = azurerm_user_assigned_identity.kubelet.id
 }
 
+resource "azurerm_proximity_placement_group" "default" {
+  name                = module.naming.proximity_placement_group.name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+}
+
+resource "azurerm_proximity_placement_group" "main" {
+  for_each            = local.zones
+  name                = "${module.naming.proximity_placement_group.name}-zone-${each.value}"
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  zone                = each.value
+  allowed_vm_sizes    = ["Standard_D2pds_v5"]
+}
+
 resource "azurerm_kubernetes_cluster" "main" {
   name                              = module.naming.kubernetes_cluster.name
   resource_group_name               = azurerm_resource_group.main.name
+  node_resource_group               = "${azurerm_resource_group.main.name}-aks"
   location                          = azurerm_resource_group.main.location
   automatic_channel_upgrade         = "patch"
-  dns_prefix                        = random_pet.main.id
+  dns_prefix                        = local.project
   image_cleaner_enabled             = true
   image_cleaner_interval_hours      = 24
-  kubernetes_version                = data.azurerm_kubernetes_service_versions.main.latest_version
+  kubernetes_version                = var.configuration.cluster.kubernetes_version
   local_account_disabled            = true
   oidc_issuer_enabled               = true
   role_based_access_control_enabled = true
@@ -107,6 +167,7 @@ resource "azurerm_kubernetes_cluster" "main" {
     network_plugin      = "azure"
     network_plugin_mode = "overlay"
     ebpf_data_plane     = "cilium"
+    network_policy      = "cilium"
     pod_cidr            = var.configuration.cluster.pod_cidr
     service_cidr        = var.configuration.cluster.service_cidr
     dns_service_ip      = cidrhost(var.configuration.cluster.service_cidr, 10)
@@ -133,8 +194,8 @@ resource "azurerm_kubernetes_cluster" "main" {
   default_node_pool {
     name                         = "default"
     enable_auto_scaling          = true
-    min_count                    = 3
-    max_count                    = var.configuration.cluster.default_node_pool.max_count
+    min_count                    = 1
+    max_count                    = 3
     max_pods                     = 250
     only_critical_addons_enabled = true
     os_disk_size_gb              = 32
@@ -142,8 +203,8 @@ resource "azurerm_kubernetes_cluster" "main" {
     os_sku                       = "AzureLinux"
     temporary_name_for_rotation  = "temp"
     vm_size                      = var.configuration.cluster.default_node_pool.vm_size
-    vnet_subnet_id               = azurerm_subnet.main.id
-    zones                        = local.zones
+    vnet_subnet_id               = azurerm_subnet.default.id
+    proximity_placement_group_id = azurerm_proximity_placement_group.default.id
 
     upgrade_settings {
       max_surge = var.configuration.cluster.default_node_pool.max_surge
@@ -156,27 +217,35 @@ resource "azurerm_kubernetes_cluster" "main" {
     azure_rbac_enabled     = false
   }
 
+  auto_scaler_profile {
+    scale_down_utilization_threshold = 0.75
+    balance_similar_node_groups      = true
+  }
+
   depends_on = [
     azurerm_subnet_nat_gateway_association.main,
-    azurerm_nat_gateway_public_ip_prefix_association.main
+    azurerm_subnet_nat_gateway_association.default,
+    azurerm_nat_gateway_public_ip_association.main,
+    azurerm_nat_gateway_public_ip_association.default
   ]
 }
 
 resource "azurerm_kubernetes_cluster_node_pool" "main" {
-  for_each              = var.configuration.cluster.node_pools
-  name                  = each.key
-  kubernetes_cluster_id = azurerm_kubernetes_cluster.main.id
-  enable_auto_scaling   = true
-  min_count             = 3
-  max_count             = each.value.max_count
-  max_pods              = 250
-  os_disk_size_gb       = each.value.os_disk_size_gb
-  os_disk_type          = each.value.os_disk_type
-  os_sku                = each.value.os_sku
-  mode                  = "User"
-  vm_size               = each.value.vm_size
-  vnet_subnet_id        = azurerm_subnet.main.id
-  zones                 = local.zones
+  for_each                     = local.node_pools
+  name                         = each.key
+  kubernetes_cluster_id        = azurerm_kubernetes_cluster.main.id
+  enable_auto_scaling          = true
+  min_count                    = 1
+  max_count                    = each.value.max_count
+  max_pods                     = 250
+  os_disk_size_gb              = each.value.os_disk_size_gb
+  os_disk_type                 = each.value.os_disk_type
+  os_sku                       = each.value.os_sku
+  mode                         = "User"
+  vm_size                      = each.value.vm_size
+  vnet_subnet_id               = each.value.subnet_id
+  zones                        = [each.value.zone]
+  proximity_placement_group_id = each.value.proximity_placement_group_id
 
   upgrade_settings {
     max_surge = each.value.max_surge
@@ -184,8 +253,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "main" {
 }
 
 resource "azurerm_role_assignment" "cluster_admin_user_role" {
-  for_each             = var.configuration.cluster.admins
   scope                = azurerm_kubernetes_cluster.main.id
-  principal_id         = each.value
+  principal_id         = azuread_group.main.object_id
   role_definition_name = "Azure Kubernetes Service Cluster User Role"
 }

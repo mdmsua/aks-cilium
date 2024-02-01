@@ -1,0 +1,12 @@
+kind: Konfiguration
+metadata:
+  name: main
+configuration:
+  project: ""
+  location: westeurope
+  virtual_network:
+    address_space: 192.168.255.0/24
+  cluster:
+      pod_cidr: 172.16.0.0/16
+      service_cidr: 172.17.0.0/16
+  

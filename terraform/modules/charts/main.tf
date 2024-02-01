@@ -10,39 +10,5 @@ resource "helm_release" "argocd" {
   reuse_values      = true
   wait              = true
   wait_for_jobs     = true
-
-  set {
-    name  = "redis-ha.enabled"
-    value = true
-  }
-
-  set {
-    name  = "controller.replicas"
-    value = 1
-  }
-
-  set {
-    name  = "server.autoscaling.enabled"
-    value = true
-  }
-
-  set {
-    name  = "server.autoscaling.minReplicas"
-    value = 2
-  }
-
-  set {
-    name  = "repoServer.autoscaling.enabled"
-    value = true
-  }
-
-  set {
-    name  = "repoServer.autoscaling.minReplicas"
-    value = 2
-  }
-
-  set {
-    name  = "applicationSet.replicas"
-    value = 2
-  }
+  timeout           = 60
 }

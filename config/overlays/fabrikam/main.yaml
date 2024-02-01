@@ -1,0 +1,11 @@
+kind: Konfiguration
+metadata:
+  name: main
+configuration:
+  project: fabrikam
+  location: westeurope
+  cluster:
+    node_pools:
+    - name: main
+    admins:
+    - 6b1aa092-b266-49f3-be05-341fff39cd59

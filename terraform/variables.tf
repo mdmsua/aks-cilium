@@ -1,42 +1,28 @@
 variable "configuration" {
   type = object({
+    project  = optional(string)
     location = string
     virtual_network = object({
       address_space = string
     })
     cluster = object({
-      pod_cidr     = string
-      service_cidr = string
+      pod_cidr           = string
+      service_cidr       = string
+      kubernetes_version = optional(string, "1.27")
       default_node_pool = optional(object({
         vm_size   = optional(string, "Standard_D2pds_v5")
-        max_count = optional(number, 50)
         max_surge = optional(string, "100%")
       }), {})
-      node_pools = map(object({
+      node_pools = optional(list(object({
+        name            = string
+        max_count       = optional(number, 3)
         vm_size         = optional(string, "Standard_D2pds_v5")
-        max_count       = optional(number, 50)
         os_disk_size_gb = optional(number, 32)
         os_disk_type    = optional(string, "Ephemeral")
         os_sku          = optional(string, "AzureLinux")
-        max_surge       = optional(string, "50%")
-      }))
+        max_surge       = optional(string, "100%")
+      })), [])
       admins = optional(set(string), [])
     })
   })
-  default = {
-    location = "westeurope"
-    virtual_network = {
-      address_space = "192.168.255.0/24"
-    }
-    cluster = {
-      pod_cidr     = "172.16.0.0/16"
-      service_cidr = "172.17.0.0/16"
-      node_pools = {
-        main = {}
-      }
-      admins = [
-        "6b1aa092-b266-49f3-be05-341fff39cd59"
-      ]
-    }
-  }
 }
