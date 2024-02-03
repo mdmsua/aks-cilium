@@ -39,13 +39,12 @@ jobs:
           env:
             OVERLAY: ${{ inputs.overlay }}
           working-directory: ./cfg
-        - run: cat ./terraform.tfvars.json
-          working-directory: ./terraform
         - uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.2.0
           id: upload
           with:
             workspace: ${{ env.TFC_WORKSPACE }}
             directory: ./terraform
+            token: ${{ secrets.TFC_TOKEN }}
         - name: Create run
           uses: hashicorp/tfc-workflows-github/actions/create-run@v1.2.0
           id: run
