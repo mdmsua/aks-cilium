@@ -1,0 +1,51 @@
+name: Default
+
+permissions:
+    id-token: write
+    contents: read
+
+on:
+    workflow_dispatch:
+      inputs:
+        overlay:
+          description: Overlay name
+          required: true
+          default: cilium
+
+env:
+    TF_INPUT: 0
+    TF_IN_AUTOMATION: 1
+    TFC_WORKSPACE: ${{ inputs.overlay }}
+    TFC_ORGANIZATION: Exatron
+
+jobs:
+    default:
+        name: Default
+        runs-on: ubuntu-latest
+        steps:
+        - name: Checkout source
+          uses: actions/checkout@v4
+          with:
+            sparse-checkout: |
+                terraform
+        - name: Checkout config
+          uses: actions/checkout@v4
+          with:
+            repository: mdmsua/aks-cfg
+            ref: main
+            path: cfg
+        - name: Create variables file
+          run:  kubectl kustomize ./overlays/cilium | yq 'del(.kind)|del(.metadata)' -o json > ../terraform/terraform.tfvars.json
+          working-directory: ./cfg
+        - name: Setup terraform
+          uses: hashicorp/setup-terraform@v3
+          with:
+            cli_config_credentials_token: ${{ secrets.TFC_TOKEN }}
+        - name: Create run
+          uses: hashicorp/tfc-workflows-github/actions/create-run@v1.2.0
+          id: run
+          with:
+            workspace: ${{ env.TFC_WORKSPACE }}
+            message: ${{ github.run_id }}
+            organization: ${{ env.TFC_ORGANIZATION }}
+            token: ${{ secrets.TFC_TOKEN }}

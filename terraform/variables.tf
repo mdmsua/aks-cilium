@@ -1,28 +1,40 @@
-variable "configuration" {
+variable "spec" {
   type = object({
-    project  = optional(string)
-    location = string
+    project         = string
+    tenant_id       = string
+    subscription_id = string
+    location        = string
+    zones           = set(string)
     virtual_network = object({
-      address_space = string
+      address_space = list(string)
     })
     cluster = object({
-      pod_cidr           = string
-      service_cidr       = string
-      kubernetes_version = optional(string, "1.27")
-      default_node_pool = optional(object({
-        vm_size   = optional(string, "Standard_D2pds_v5")
-        max_surge = optional(string, "100%")
-      }), {})
-      node_pools = optional(list(object({
+      version       = string
+      pod_cidrs     = list(string)
+      service_cidrs = list(string)
+      default_node_pool = object({
+        min_count       = number
+        max_count       = number
+        max_pods        = number
+        vm_size         = string
+        os_disk_size_gb = number
+        os_disk_type    = string
+        os_sku          = string
+        max_surge       = string
+      })
+      node_pools = set(object({
         name            = string
-        max_count       = optional(number, 3)
-        vm_size         = optional(string, "Standard_D2pds_v5")
-        os_disk_size_gb = optional(number, 32)
-        os_disk_type    = optional(string, "Ephemeral")
-        os_sku          = optional(string, "AzureLinux")
-        max_surge       = optional(string, "100%")
-      })), [])
-      admins = optional(set(string), [])
+        mode            = string
+        min_count       = number
+        max_count       = number
+        max_pods        = number
+        vm_size         = string
+        os_disk_size_gb = number
+        os_disk_type    = string
+        os_sku          = string
+        max_surge       = string
+      }))
+      admins = set(string)
     })
   })
 }
