@@ -35,12 +35,10 @@ jobs:
             ref: main
             path: cfg
         - name: Create variables file
-          run:  kubectl kustomize ./overlays/cilium | yq 'del(.kind)|del(.metadata)' -o json > ../terraform/terraform.tfvars.json
+          run:  kubectl kustomize ./overlays/$OVERLAY | yq 'del(.kind)|del(.metadata)' -o json > ../terraform/terraform.tfvars.json
+          env:
+            OVERLAY: ${{ inputs.overlay }}
           working-directory: ./cfg
-        - name: Setup terraform
-          uses: hashicorp/setup-terraform@v3
-          with:
-            cli_config_credentials_token: ${{ secrets.TFC_TOKEN }}
         - name: Create run
           uses: hashicorp/tfc-workflows-github/actions/create-run@v1.2.0
           id: run
