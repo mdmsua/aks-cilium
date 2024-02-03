@@ -49,14 +49,23 @@ resource "azurerm_subnet" "main" {
   ]
 }
 
+resource "azurerm_public_ip_prefix" "main" {
+  name                = module.naming.public_ip_prefix.name
+  resource_group_name = azurerm_resource_group.main.name
+  location            = azurerm_resource_group.main.location
+  prefix_length       = 30
+  sku                 = "Standard"
+  zones               = var.spec.zones
+}
+
 resource "azurerm_public_ip" "default" {
   name                = module.naming.public_ip.name
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
+  public_ip_prefix_id = azurerm_public_ip_prefix.main.id
   ip_version          = "IPv4"
   sku                 = "Standard"
   allocation_method   = "Static"
-  zones               = var.spec.zones
 }
 
 resource "azurerm_public_ip" "main" {
