@@ -15,8 +15,8 @@ on:
 env:
     TF_INPUT: 0
     TF_IN_AUTOMATION: 1
-    TFC_WORKSPACE: ${{ inputs.overlay }}
-    TFC_ORGANIZATION: Exatron
+    TF_CLOUD_ORGANIZATION: Exatron
+    TF_API_TOKEN: ${{ secrets.TFC_TOKEN }}
 
 jobs:
     default:
@@ -42,15 +42,12 @@ jobs:
         - uses: hashicorp/tfc-workflows-github/actions/upload-configuration@v1.2.0
           id: upload
           with:
-            workspace: ${{ env.TFC_WORKSPACE }}
+            workspace: ${{ inputs.overlay }}
             directory: ./terraform
-            token: ${{ secrets.TFC_TOKEN }}
         - name: Create run
           uses: hashicorp/tfc-workflows-github/actions/create-run@v1.2.0
           id: run
           with:
-            workspace: ${{ env.TFC_WORKSPACE }}
+            workspace: ${{ inputs.overlay }}
             message: ${{ github.run_id }}
-            organization: ${{ env.TFC_ORGANIZATION }}
-            token: ${{ secrets.TFC_TOKEN }}
             configuration_version: ${{ steps.upload.outputs.configuration_version_id }}
