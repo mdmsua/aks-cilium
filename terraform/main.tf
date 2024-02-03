@@ -230,7 +230,7 @@ resource "azurerm_kubernetes_cluster_node_pool" "main" {
   os_disk_type          = each.value.os_disk_type
   os_sku                = each.value.os_sku
   vm_size               = each.value.vm_size
-  vnet_subnet_id        = azurerm_subnet.default.id
+  vnet_subnet_id        = each.value.subnet_id
   zones                 = [each.value.zone]
 
   upgrade_settings {
