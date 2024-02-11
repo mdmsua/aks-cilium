@@ -215,8 +215,7 @@ resource "azurerm_kubernetes_cluster" "main" {
   }
 
   auto_scaler_profile {
-    scale_down_utilization_threshold = 0.75
-    balance_similar_node_groups      = true
+    balance_similar_node_groups = true
   }
 
   depends_on = [
