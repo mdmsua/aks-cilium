@@ -138,6 +138,12 @@ resource "azurerm_role_assignment" "cluster_managed_identity_operator_kubelet" {
   scope                = azurerm_user_assigned_identity.kubelet.id
 }
 
+resource "azurerm_role_assignment" "cluster_network_contributor_network" {
+  principal_id         = azurerm_user_assigned_identity.cluster.principal_id
+  role_definition_name = "Network Contributor"
+  scope                = azurerm_virtual_network.main.id
+}
+
 resource "azurerm_kubernetes_cluster" "main" {
   name                              = module.naming.kubernetes_cluster.name
   resource_group_name               = azurerm_resource_group.main.name
