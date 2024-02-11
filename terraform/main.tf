@@ -173,6 +173,8 @@ resource "azurerm_kubernetes_cluster" "main" {
     ebpf_data_plane     = "cilium"
     network_policy      = "cilium"
     pod_cidr            = var.spec.cluster.pod_cidrs.0
+    service_cidr        = var.spec.cluster.service_cidrs.0
+    dns_service_ip      = cidrhost(var.spec.cluster.service_cidrs.0, 10)
     outbound_type       = "userAssignedNATGateway"
 
     nat_gateway_profile {
