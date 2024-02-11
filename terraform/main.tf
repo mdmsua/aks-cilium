@@ -62,7 +62,6 @@ resource "azurerm_public_ip" "default" {
   name                = module.naming.public_ip.name
   resource_group_name = azurerm_resource_group.main.name
   location            = azurerm_resource_group.main.location
-  public_ip_prefix_id = azurerm_public_ip_prefix.main.id
   ip_version          = "IPv4"
   sku                 = "Standard"
   allocation_method   = "Static"
